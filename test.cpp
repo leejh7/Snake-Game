@@ -112,8 +112,8 @@ void SnakeGame::StartGame()
   DrawSnake();
   for(int i=0; i<100; i++){
     MoveSnake();
-    usleep(50000);
     DrawSnake();
+    if(Crash()) break;
   }
 }
 
@@ -127,13 +127,11 @@ void SnakeGame::DrawSnake()
       wattron(gameBoard,COLOR_PAIR(2));
       wmove(gameBoard,snake[i].ypos,snake[i].xpos);
       waddch(gameBoard,'X');
-      //mvwprintw(gameBoard,snake[i].ypos,snake[i].xpos,"X");
     }
     else {
       wattron(gameBoard,COLOR_PAIR(3));
       wmove(gameBoard,snake[i].ypos,snake[i].xpos);
       waddch(gameBoard,'O');
-      //mvwprintw(gameBoard,snake[i].ypos,snake[i].xpos,"O");
     }
   }
   wattroff(gameBoard,COLOR_PAIR(2));
@@ -143,46 +141,81 @@ void SnakeGame::DrawSnake()
 
 void SnakeGame::MoveSnake()
 {
+  nodelay(gameBoard,TRUE);
   keypad(gameBoard,TRUE);
-  int key = wgetch(gameBoard);
-
-  if(!MoveRule(key)) return;
-  if(Crash(key)) return;
-
-  // renew
-  wmove(gameBoard,snake.back().ypos,snake.back().xpos);
-  int x,y;
-  getyx(gameBoard,y,x);
-  if(mapData[y][x]=='2') waddch(gameBoard,' ');
-  else if(mapData[y][x]=='3') waddch(gameBoard,'P');
-
-  for(int i=snake.size()-1; i>0; i--)
+  std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
+  std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
+  std::chrono::duration<double> diff = end - start;
+  bool flag = false;
+  int key = 0;
+  while(diff.count()<0.5)
   {
-    snake[i].xpos = snake[i-1].xpos;
-    snake[i].ypos = snake[i-1].ypos;
+    if(key = wgetch(gameBoard))
+    {
+        flag = true;
+        if(!MoveRule(key)) break;
+        KeyEvent(key);
+        break;
+    }
+    end = std::chrono::system_clock::now();
+    diff = end - start;
   }
 
+  while(flag && diff.count()<0.5)
+  {
+    end = std::chrono::system_clock::now();
+    diff = end - start;
+  }
+
+  switch(direction)
+  {
+    case 'u':
+      snake.insert(snake.begin(),SnakePos(snake[0].ypos-1,snake[0].xpos));
+      break;
+    case 'd':
+      snake.insert(snake.begin(),SnakePos(snake[0].ypos+1,snake[0].xpos));
+      break;
+    case 'l':
+      snake.insert(snake.begin(),SnakePos(snake[0].ypos,snake[0].xpos-1));
+      break;
+    case 'r':
+      snake.insert(snake.begin(),SnakePos(snake[0].ypos,snake[0].xpos+1));
+      break;
+    default:
+      break;
+  }
+  RenewMap();
+  snake.pop_back();
+}
+
+void SnakeGame::KeyEvent(int key)
+{
   switch(key)
   {
     case KEY_UP:
-      snake[0].ypos--;
       direction='u';
       break;
     case KEY_DOWN:
-      snake[0].ypos++;
       direction='d';
       break;
     case KEY_LEFT:
-      snake[0].xpos--;
       direction='l';
       break;
     case KEY_RIGHT:
-      snake[0].xpos++;
       direction='r';
       break;
     default:
       break;
   }
+}
+
+void SnakeGame::RenewMap()
+{
+  wmove(gameBoard,snake.back().ypos,snake.back().xpos);
+  int x,y;
+  getyx(gameBoard,y,x);
+  if(mapData[y][x]=='2') waddch(gameBoard,' ');
+  else if(mapData[y][x]=='3') waddch(gameBoard,'P');
 }
 
 bool SnakeGame::MoveRule(int key)
@@ -194,13 +227,10 @@ bool SnakeGame::MoveRule(int key)
   else return true;
 }
 
-bool SnakeGame::Crash(int key)
+bool SnakeGame::Crash()
 {
   int x,y;
   getyx(gameBoard,y,x);
-  if(key==KEY_RIGHT&&mapData[y][x+1]!='2') return true;
-  else if(key==KEY_LEFT&&mapData[y][x-1]!='2') return true;
-  else if(key==KEY_UP&&mapData[y-1][x]!='2') return true;
-  else if(key==KEY_DOWN&&mapData[y+1][x]!='2') return true;
+  if(mapData[y][x]=='0'||mapData[y][x]=='1') return true;
   else return false;
 }

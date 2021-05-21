@@ -7,6 +7,7 @@
 #include <cstring>
 #include <unistd.h>
 #include <ctime>
+#include <chrono>
 #include <vector>
 
 typedef struct SnakePos
@@ -32,8 +33,10 @@ private:
   void DrawMap(int n);
   void DrawSnake();
   void MoveSnake();
+  void RenewMap();
+  void KeyEvent(int key);
   bool MoveRule(int key);
-  bool Crash(int key);
+  bool Crash();
 public:
   SnakeGame();
   ~SnakeGame();
