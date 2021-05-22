@@ -10,13 +10,13 @@
 #include <chrono>
 #include <vector>
 
-typedef struct SnakePos
+typedef struct CharPos
 {
   int xpos;
   int ypos;
-  SnakePos(int x, int y);
-  SnakePos();
-}SnakePos;
+  CharPos(int x, int y);
+  CharPos();
+}CharPos;
 
 class SnakeGame
 {
@@ -27,14 +27,18 @@ private:
   int maxwidth, maxheight, c, gWidth, gHeight;
   char direction;
   char mapData[21][60];
-  std::vector<SnakePos> snake;
+  std::vector<CharPos> snake;
+  CharPos growth_item;
+  CharPos poison_item;
   void InitWindow();
-  void InitSnake();
+  void InitChar();
   void DrawMap(int n);
   void DrawSnake();
   void MoveSnake();
   void RenewMap();
   void KeyEvent(int key);
+  void MakeItem();
+  void Check(bool &flag);
   bool MoveRule(int key);
   bool Crash();
 public:
