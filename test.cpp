@@ -14,13 +14,9 @@ CharPos::CharPos()
 
 SnakeGame::SnakeGame()
 {
-  gWidth = 60;
-  gHeight = 21;
-  srand(time(NULL));
-  direction = 'l';
-  InitChar();
   InitWindow();
-  gameBoard = newwin(gHeight,gWidth,0,0);
+  InitGameBoard();
+  InitChar();
 }
 
 SnakeGame::~SnakeGame()
@@ -32,6 +28,7 @@ SnakeGame::~SnakeGame()
 
 void SnakeGame::InitWindow()
 {
+  srand(time(NULL));
   initscr();
   cbreak();
   start_color();
@@ -57,9 +54,19 @@ void SnakeGame::InitWindow()
   refresh();
 }
 
+void SnakeGame::InitGameBoard()
+{
+  gWidth = 60;
+  gHeight = 21;
+  gameBoard = newwin(gHeight,gWidth,0,0);
+  nodelay(gameBoard,TRUE);
+  keypad(gameBoard,TRUE);
+}
+
 void SnakeGame::InitChar()
 {
   //Init snake
+  direction = 'l';
   if(snake.size() != 0)
     snake.clear();
   for(int i=0; i<3; i++)
@@ -70,6 +77,12 @@ void SnakeGame::InitChar()
   growth_item.xpos=10;
   poison_item.ypos=5;
   poison_item.xpos=50;
+
+  //Init Gate
+  gate_one.ypos=5;
+  gate_one.xpos=0;
+  gate_two.ypos=15;
+  gate_two.xpos=58;
 }
 
 void SnakeGame::DrawMap(int n)
@@ -91,6 +104,7 @@ void SnakeGame::DrawMap(int n)
     }
     else if(c=='0'){
       mapData[row][col++] = c;
+      wall.push_back(CharPos(row,col));
       wattron(gameBoard,COLOR_PAIR(1));
       wprintw(gameBoard,"%c",'@');
       wattroff(gameBoard,COLOR_PAIR(1));
@@ -98,12 +112,6 @@ void SnakeGame::DrawMap(int n)
     else if(c=='2') {
       mapData[row][col++] = c;
       wprintw(gameBoard,"%c",' ');
-    }
-    else if(c=='5') {
-      mapData[row][col++] = c;
-      wattron(gameBoard,COLOR_PAIR(4));
-      wprintw(gameBoard,"%c",'T');
-      wattroff(gameBoard,COLOR_PAIR(4));
     }
     else {
       row++; col=0;
@@ -119,16 +127,28 @@ void SnakeGame::DrawMap(int n)
   wattron(gameBoard,COLOR_PAIR(6));
   mvwprintw(gameBoard,5,50,"P");
   wattroff(gameBoard,COLOR_PAIR(6));
+
+  mapData[5][0]='5';
+  mapData[15][58]='6';
+  wattron(gameBoard,COLOR_PAIR(4));
+  mvwprintw(gameBoard,5,0,"T");
+  mvwprintw(gameBoard,15,58,"T");
+  wattroff(gameBoard,COLOR_PAIR(4));
+
   map.close();
   wrefresh(gameBoard);
 }
 
 void SnakeGame::StartGame()
 {
+  iter=0;
   DrawMap(1);
   DrawSnake();
-  for(int i=0; i<100; i++){
-    if(i==10) MakeItem();
+  while(true)
+  {
+    iter++;
+    if(iter>=50) MakeItem();
+    //if(iter%5==0) MakeGate();
     MoveSnake();
     DrawSnake();
     if(Crash()) break;
@@ -161,8 +181,6 @@ void SnakeGame::DrawSnake()
 
 void SnakeGame::MoveSnake()
 {
-  nodelay(gameBoard,TRUE);
-  keypad(gameBoard,TRUE);
   std::chrono::system_clock::time_point start = std::chrono::system_clock::now();
   std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
   std::chrono::duration<double> diff = end - start;
@@ -247,7 +265,95 @@ void SnakeGame::Check(bool &flag)
     snake.pop_back();
     MakeItem();
   }
+  else if(mapData[y][x]=='5')
+  {
+    snake.erase(snake.begin());
+    TeleportRule(1);
+  }
+  else if(mapData[y][x]=='6')
+  {
+    snake.erase(snake.begin());
+    TeleportRule(2);
+  }
   else return;
+}
+
+void SnakeGame::TeleportRule(int n)
+{
+  int basex[4]={0,1,0,-1};
+  int basey[4]={-1,0,1,0};
+  int dx[4], dy[4];
+  switch(direction)
+  {
+    case 'u':
+      for(int i=0;i<4;i++)
+      {
+        int idx=0+i;
+        if(idx>=4) idx-=4;
+        dx[i]=basex[idx];
+        dy[i]=basey[idx];
+      }
+      break;
+    case 'd':
+      for(int i=0;i<4;i++)
+      {
+        int idx=2+i;
+        if(idx>=4) idx-=4;
+        dx[i]=basex[idx];
+        dy[i]=basey[idx];
+      }
+      break;
+    case 'l':
+      for(int i=0;i<4;i++)
+      {
+        int idx=3+i;
+        if(idx>=4) idx-=4;
+        dx[i]=basex[idx];
+        dy[i]=basey[idx];
+      }
+      break;
+    case 'r':
+      for(int i=0;i<4;i++)
+      {
+        int idx=1+i;
+        if(idx>=4) idx-=4;
+        dx[i]=basex[idx];
+        dy[i]=basey[idx];
+      }
+      break;
+    default:
+      break;
+  }
+
+  if(n==1)
+  {
+    int row,col;
+    for(int i=0;i<4;i++)
+    {
+      row=gate_two.ypos+dy[i];
+      col=gate_two.xpos+dx[i];
+      if(mapData[row][col]=='2')
+      {
+        snake.insert(snake.begin(),CharPos(row,col));
+        break;
+      }
+    }
+  }
+  else if(n==2)
+  {
+    int row,col;
+    for(int i=0;i<4;i++)
+    {
+      row=gate_one.ypos+dy[i];
+      col=gate_one.xpos+dx[i];
+      if(mapData[row][col]=='2')
+      {
+        snake.insert(snake.begin(),CharPos(row,col));
+        break;
+      }
+    }
+  }
+
 }
 
 void SnakeGame::RenewMap()
@@ -255,13 +361,19 @@ void SnakeGame::RenewMap()
   wmove(gameBoard,snake.back().ypos,snake.back().xpos);
   int x,y;
   getyx(gameBoard,y,x);
-  if(mapData[y][x]=='5') waddch(gameBoard,'P');
+  if(mapData[y][x]=='5'||mapData[y][x]=='6')
+  {
+    // wattron(gameBoard,COLOR_PAIR(4));
+    // waddch(gameBoard,'T');
+    // wattroff(gameBoard,COLOR_PAIR(4));
+  }
   else if(mapData[y][x]!='0',mapData[y][x]!='1') waddch(gameBoard,' ');
 }
 
 
 void SnakeGame::MakeItem()
 {
+  iter=0;
   //Growth item
   while(true)
   {
@@ -290,7 +402,6 @@ void SnakeGame::MakeItem()
       break;
     }
   }
-
   //Poison item
   while(true)
   {
@@ -316,6 +427,54 @@ void SnakeGame::MakeItem()
       wattron(gameBoard,COLOR_PAIR(6));
       mvwprintw(gameBoard,poison_item.ypos,poison_item.xpos,"P");
       wattroff(gameBoard,COLOR_PAIR(6));
+      break;
+    }
+  }
+}
+
+void SnakeGame::MakeGate()
+{
+  //Gate 1
+  while(true)
+  {
+    int row,col,idx;
+    idx=rand()%wall.size();
+    row=wall[idx].ypos;
+    col=wall[idx].xpos;
+    if(mapData[row][col]=='0')
+    {
+      mapData[gate_one.ypos][gate_one.xpos]='0';
+      wattron(gameBoard,COLOR_PAIR(1));
+      mvwprintw(gameBoard,gate_one.ypos,gate_one.xpos,"@");
+      wattroff(gameBoard,COLOR_PAIR(1));
+      mapData[row][col]='5';
+      gate_one.ypos=row;
+      gate_one.xpos=col;
+      wattron(gameBoard,COLOR_PAIR(4));
+      mvwprintw(gameBoard,gate_one.ypos,gate_one.xpos,"T");
+      wattroff(gameBoard,COLOR_PAIR(4));
+      break;
+    }
+  }
+  //Gate 2
+  while(true)
+  {
+    int row,col,idx;
+    idx=rand()%wall.size();
+    row=wall[idx].ypos;
+    col=wall[idx].xpos;
+    if(mapData[row][col]=='0')
+    {
+      mapData[gate_two.ypos][gate_two.xpos]='0';
+      wattron(gameBoard,COLOR_PAIR(1));
+      mvwprintw(gameBoard,gate_two.ypos,gate_two.xpos,"@");
+      wattroff(gameBoard,COLOR_PAIR(1));
+      mapData[row][col]='6';
+      gate_two.ypos=row;
+      gate_two.xpos=col;
+      wattron(gameBoard,COLOR_PAIR(4));
+      mvwprintw(gameBoard,gate_two.ypos,gate_two.xpos,"T");
+      wattroff(gameBoard,COLOR_PAIR(4));
       break;
     }
   }

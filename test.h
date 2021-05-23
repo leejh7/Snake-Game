@@ -27,10 +27,15 @@ private:
   int maxwidth, maxheight, c, gWidth, gHeight;
   char direction;
   char mapData[21][60];
+  std::vector<CharPos> wall;
+  int iter;
   std::vector<CharPos> snake;
   CharPos growth_item;
   CharPos poison_item;
+  CharPos gate_one;
+  CharPos gate_two;
   void InitWindow();
+  void InitGameBoard();
   void InitChar();
   void DrawMap(int n);
   void DrawSnake();
@@ -38,7 +43,9 @@ private:
   void RenewMap();
   void KeyEvent(int key);
   void MakeItem();
+  void MakeGate();
   void Check(bool &flag);
+  void TeleportRule(int n);
   bool MoveRule(int key);
   bool Crash();
 public:
