@@ -16,6 +16,8 @@ SnakeGame::SnakeGame()
 {
   InitWindow();
   InitGameBoard();
+  InitScoreBoard();
+  InitMissionBoard();
   InitChar();
 }
 
@@ -61,6 +63,34 @@ void SnakeGame::InitGameBoard()
   gameBoard = newwin(gHeight,gWidth,0,0);
   nodelay(gameBoard,TRUE);
   keypad(gameBoard,TRUE);
+}
+
+void SnakeGame::InitScoreBoard()
+{
+  sWidth = 15;
+  sHeigth = 7;
+  scoreBoard = newwin(sHeigth,sWidth,3,gWidth+5);
+  cur_length = 3;
+  cnt_grow = 0;
+  cnt_poison = 0;
+  cnt_use_gate = 0;
+  DrawGameBoard();
+}
+
+void SnakeGame::InitMissionBoard()
+{
+  mWidth = 15;
+  mHeight = 7;
+  missionBoard = newwin(mHeight,mWidth,sHeigth+5,gWidth+5);
+  mis_length = 3;
+  mis_cnt_grow = 1;
+  mis_cnt_poison = 1;
+  mis_cnt_use_gate = 1;
+  check_length = ' ';
+  check_grow = ' ';
+  check_poison = ' ';
+  check_use_gate = ' ';
+  DrawMissionBoard();
 }
 
 void SnakeGame::InitChar()
@@ -139,16 +169,57 @@ void SnakeGame::DrawMap(int n)
   wrefresh(gameBoard);
 }
 
+void SnakeGame::DrawGameBoard()
+{
+  init_pair(7,COLOR_WHITE,COLOR_BLACK);
+  //Draw Score Board
+  wbkgd(scoreBoard,COLOR_PAIR(7));
+  wattron(scoreBoard,COLOR_PAIR(7));
+  wborder(scoreBoard,'|','|','-','-','*','*','*','*');
+  mvwprintw(scoreBoard,1,1,"Score Board");
+  mvwprintw(scoreBoard,2,1,"B: %d",cur_length);
+  mvwprintw(scoreBoard,3,1,"+: %d",cnt_grow);
+  mvwprintw(scoreBoard,4,1,"-: %d",cnt_poison);
+  mvwprintw(scoreBoard,5,1,"G: %d",cnt_use_gate);
+  wrefresh(scoreBoard);
+}
+
+void SnakeGame::DrawMissionBoard()
+{
+  //Draw Mission Board
+  wbkgd(missionBoard,COLOR_PAIR(7));
+  wattron(missionBoard,COLOR_PAIR(7));
+  wborder(missionBoard,'|','|','-','-','*','*','*','*');
+  mvwprintw(missionBoard,1,1,"Mission");
+  mvwprintw(missionBoard,2,1,"B: %-2d (%c)",mis_length,check_length);
+  mvwprintw(missionBoard,3,1,"+: %-2d (%c)",mis_cnt_grow,check_grow);
+  mvwprintw(missionBoard,4,1,"-: %-2d (%c)",mis_cnt_poison,check_poison);
+  mvwprintw(missionBoard,5,1,"G: %-2d (%c)",mis_cnt_use_gate,check_use_gate);
+  wrefresh(missionBoard);
+}
+
 void SnakeGame::StartGame()
 {
+  int n=1;
   iter=0;
-  DrawMap(1);
+  iter_gate=0;
+  DrawMap(n);
   DrawSnake();
   while(true)
   {
-    iter++;
+    if(NextStage())
+    {
+      n++;
+      wclear(gameBoard);
+      DrawMap(n);
+      InitChar();
+      InitScoreBoard();
+      InitMissionBoard();
+      iter=0; iter_gate=0;
+    }
+    iter++; iter_gate++;
     if(iter>=50) MakeItem();
-    //if(iter%5==0) MakeGate();
+    if(iter_gate>=50) MakeGate();
     MoveSnake();
     DrawSnake();
     if(Crash()) break;
@@ -225,6 +296,7 @@ void SnakeGame::MoveSnake()
   flag=true;
   Check(flag);
   RenewMap();
+  RenewBoard();
   if(flag) snake.pop_back();
 }
 
@@ -256,22 +328,34 @@ void SnakeGame::Check(bool &flag)
   getyx(gameBoard,y,x);
   if(mapData[y][x]=='3')
   {
+    cur_length++;
+    cnt_grow++;
+    RenewBoard();
     flag=false;
     MakeItem();
   }
   else if(mapData[y][x]=='4')
   {
+    cur_length--;
+    cnt_poison++;
+    RenewBoard();
     RenewMap();
     snake.pop_back();
     MakeItem();
   }
   else if(mapData[y][x]=='5')
   {
+    cnt_use_gate++;
+    RenewBoard();
+    iter_gate=35;
     snake.erase(snake.begin());
     TeleportRule(1);
   }
   else if(mapData[y][x]=='6')
   {
+    cnt_use_gate++;
+    RenewBoard();
+    iter_gate=35;
     snake.erase(snake.begin());
     TeleportRule(2);
   }
@@ -283,6 +367,8 @@ void SnakeGame::TeleportRule(int n)
   int basex[4]={0,1,0,-1};
   int basey[4]={-1,0,1,0};
   int dx[4], dy[4];
+  char basedirctions[4]={'u','r','d','l'};
+  char directions[4];
   switch(direction)
   {
     case 'u':
@@ -292,6 +378,7 @@ void SnakeGame::TeleportRule(int n)
         if(idx>=4) idx-=4;
         dx[i]=basex[idx];
         dy[i]=basey[idx];
+        directions[i]=basedirctions[idx];
       }
       break;
     case 'd':
@@ -301,6 +388,7 @@ void SnakeGame::TeleportRule(int n)
         if(idx>=4) idx-=4;
         dx[i]=basex[idx];
         dy[i]=basey[idx];
+        directions[i]=basedirctions[idx];
       }
       break;
     case 'l':
@@ -310,6 +398,7 @@ void SnakeGame::TeleportRule(int n)
         if(idx>=4) idx-=4;
         dx[i]=basex[idx];
         dy[i]=basey[idx];
+        directions[i]=basedirctions[idx];
       }
       break;
     case 'r':
@@ -319,6 +408,7 @@ void SnakeGame::TeleportRule(int n)
         if(idx>=4) idx-=4;
         dx[i]=basex[idx];
         dy[i]=basey[idx];
+        directions[i]=basedirctions[idx];
       }
       break;
     default:
@@ -334,6 +424,7 @@ void SnakeGame::TeleportRule(int n)
       col=gate_two.xpos+dx[i];
       if(mapData[row][col]=='2')
       {
+        direction = directions[i];
         snake.insert(snake.begin(),CharPos(row,col));
         break;
       }
@@ -348,6 +439,7 @@ void SnakeGame::TeleportRule(int n)
       col=gate_one.xpos+dx[i];
       if(mapData[row][col]=='2')
       {
+        direction = directions[i];
         snake.insert(snake.begin(),CharPos(row,col));
         break;
       }
@@ -361,15 +453,29 @@ void SnakeGame::RenewMap()
   wmove(gameBoard,snake.back().ypos,snake.back().xpos);
   int x,y;
   getyx(gameBoard,y,x);
-  if(mapData[y][x]=='5'||mapData[y][x]=='6')
-  {
-    // wattron(gameBoard,COLOR_PAIR(4));
-    // waddch(gameBoard,'T');
-    // wattroff(gameBoard,COLOR_PAIR(4));
-  }
-  else if(mapData[y][x]!='0',mapData[y][x]!='1') waddch(gameBoard,' ');
+  if(mapData[y][x]!='0',mapData[y][x]!='1') waddch(gameBoard,' ');
 }
 
+void SnakeGame::RenewBoard()
+{
+  mvwprintw(scoreBoard,2,1,"B: %d",cur_length);
+  mvwprintw(scoreBoard,3,1,"+: %d",cnt_grow);
+  mvwprintw(scoreBoard,4,1,"-: %d",cnt_poison);
+  mvwprintw(scoreBoard,5,1,"G: %d",cnt_use_gate);
+  wrefresh(scoreBoard);
+
+  if(cur_length>=mis_length) check_length='v';
+  else check_length=' ';
+  if(cnt_grow>=mis_cnt_grow) check_grow='v';
+  if(cnt_poison>=mis_cnt_poison) check_poison='v';
+  if(cnt_use_gate>=mis_cnt_use_gate) check_use_gate='v';
+
+  mvwprintw(missionBoard,2,1,"B: %-2d (%c)",mis_length,check_length);
+  mvwprintw(missionBoard,3,1,"+: %-2d (%c)",mis_cnt_grow,check_grow);
+  mvwprintw(missionBoard,4,1,"-: %-2d (%c)",mis_cnt_poison,check_poison);
+  mvwprintw(missionBoard,5,1,"G: %-2d (%c)",mis_cnt_use_gate,check_use_gate);
+  wrefresh(missionBoard);
+}
 
 void SnakeGame::MakeItem()
 {
@@ -434,6 +540,7 @@ void SnakeGame::MakeItem()
 
 void SnakeGame::MakeGate()
 {
+  iter_gate=0;
   //Gate 1
   while(true)
   {
@@ -487,6 +594,14 @@ bool SnakeGame::MoveRule(int key)
   else if(direction=='u'&&key==KEY_DOWN) return false;
   else if(direction=='d'&&key==KEY_UP) return false;
   else return true;
+}
+
+bool SnakeGame::NextStage()
+{
+  if(check_length=='v'&&check_grow=='v'&&check_poison=='v'&&check_use_gate=='v')
+    return true;
+  else
+    return false;
 }
 
 bool SnakeGame::Crash()
