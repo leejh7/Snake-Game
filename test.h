@@ -61,6 +61,8 @@ private:
   bool MoveRule(int key);
   bool Crash();
   bool NextStage();
+  void GameOver();
+  void WinGame();
 public:
   SnakeGame();
   ~SnakeGame();

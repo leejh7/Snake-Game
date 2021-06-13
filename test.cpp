@@ -30,8 +30,8 @@ SnakeGame::~SnakeGame()
 
 void SnakeGame::InitWindow()
 {
-  srand(time(NULL));
   initscr();
+  clear();
   cbreak();
   start_color();
   keypad(stdscr,TRUE);
@@ -39,6 +39,18 @@ void SnakeGame::InitWindow()
   curs_set(0);
   nodelay(stdscr,TRUE);
   getmaxyx(stdscr,maxheight, maxwidth);
+
+  std::string startfile = "./start.txt";
+  std::ifstream start(startfile,std::ios::in);
+  if(!start) { std::cout << "cannot open file\n"; exit(1); }
+  char buf[1024];
+  int row=2;
+  while(!start.eof())
+  {
+    start.getline(buf,1024);
+    mvprintw(row,4,"%s",buf);
+    row++;
+  }
 
   char mesg[] = "Press <Enter> to play game";
   mvprintw(maxheight/2,(maxwidth-strlen(mesg))/2,"%s",mesg);
@@ -118,7 +130,7 @@ void SnakeGame::InitChar()
 void SnakeGame::DrawMap(int n)
 {
   int row=0, col=0;
-  std::string mapfile = "/home/leejh7/C2021/test/1/map" + std::to_string(n) + ".txt";
+  std::string mapfile = "./map" + std::to_string(n) + ".txt";
   std::ifstream map(mapfile,std::ios::in);
 
   init_pair(1,COLOR_CYAN,COLOR_BLACK);
@@ -617,4 +629,38 @@ bool SnakeGame::Crash()
   if(mapData[y][x]=='0'||mapData[y][x]=='1') return true;
 
   return false;
+}
+
+void SnakeGame::GameOver()
+{
+  clear();
+
+  std::string gameoverfile = "./gameover.txt";
+  std::ifstream gameover(gameoverfile,std::ios::in);
+  if(!gameover) { std::cout << "cannot open file\n"; exit(1); }
+  char buf[1024];
+  int row=2;
+  while(!gameover.eof())
+  {
+    gameover.getline(buf,1024);
+    mvprintw(row,4,"%s",buf);
+    row++;
+  }
+}
+
+void SnakeGame::WinGame()
+{
+  clear();
+
+  std::string winfile = "./win.txt";
+  std::ifstream win(winfile,std::ios::in);
+  if(!win) { std::cout << "cannot open file\n"; exit(1); }
+  char buf[1024];
+  int row=2;
+  while(!win.eof())
+  {
+    win.getline(buf,1024);
+    mvprintw(row,4,"%s",buf);
+    row++;
+  }
 }
